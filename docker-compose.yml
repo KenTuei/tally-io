@@ -1,0 +1,59 @@
+version: '3.9'
+
+# Tally.io — Local development services
+# MongoDB Atlas is the production database.
+# This compose file provides Redis for queues and optionally a local MongoDB.
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: tally-redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Optional: local MongoDB for offline development without Atlas
+  # Disable this when using MongoDB Atlas (recommended)
+  mongo:
+    image: mongo:7
+    container_name: tally-mongo
+    ports:
+      - '27017:27017'
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_LOCAL_USER:-tallydev}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_LOCAL_PASSWORD:-devpassword}
+      MONGO_INITDB_DATABASE: tally_dev
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - local-mongo  # Only start with: docker compose --profile local-mongo up
+
+  # Optional: MailHog for local email testing
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: tally-mailhog
+    ports:
+      - '1025:1025'  # SMTP
+      - '8025:8025'  # Web UI at http://localhost:8025
+    profiles:
+      - email-testing
+
+volumes:
+  redis-data:
+  mongo-data:
+
+networks:
+  default:
+    name: tally-network

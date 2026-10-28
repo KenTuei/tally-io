@@ -1,0 +1,44 @@
+{
+  "name": "tally-io",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tally.io — Offline-first POS and Business Management Platform",
+  "license": "UNLICENSED",
+  "author": {
+    "name": "Ken Kipkirui Tuei",
+    "email": "kentuei05@gmail.com"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "dev": "pnpm --parallel --filter ./apps/frontend --filter ./apps/backend dev",
+    "dev:web": "pnpm --filter ./apps/frontend dev",
+    "dev:api": "pnpm --filter ./apps/backend dev",
+    "build": "pnpm --filter ./packages/* build && pnpm --filter ./apps/frontend --filter ./apps/backend build",
+    "build:web": "pnpm --filter ./apps/frontend build",
+    "build:api": "pnpm --filter ./apps/backend build",
+    "typecheck": "pnpm --recursive typecheck",
+    "lint": "pnpm --recursive lint",
+    "lint:fix": "pnpm --recursive lint:fix",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yaml,yml}\" --ignore-path .gitignore",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yaml,yml}\" --ignore-path .gitignore",
+    "test": "pnpm --recursive test",
+    "test:coverage": "pnpm --recursive test:coverage",
+    "clean": "pnpm --recursive exec rm -rf dist build .tsbuildinfo node_modules/.cache",
+    "clean:full": "pnpm --recursive exec rm -rf node_modules dist build && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.0",
+    "prettier": "^3.4.2",
+    "turbo": "^2.3.4",
+    "typescript": "^5.7.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "typescript": "^5.7.3"
+    }
+  }
+}
