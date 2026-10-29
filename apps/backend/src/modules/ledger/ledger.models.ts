@@ -25,8 +25,8 @@ export interface ILedgerEvent extends Document {
 
 const ledgerEventSchema = new Schema<ILedgerEvent>(
   {
-    eventId: { type: String, required: true, unique: true },
-    idempotencyKey: { type: String, required: true, unique: true },
+    eventId: { type: String, required: true },
+    idempotencyKey: { type: String, required: true },
     correlationId: { type: String, required: true },
     causationId: { type: String },
     organizationId: { type: Schema.Types.ObjectId, required: true },

@@ -34,7 +34,7 @@ const inventoryEventSchema = new Schema<IInventoryEvent>(
     reason: { type: String },
     actorId: { type: Schema.Types.ObjectId, required: true },
     deviceId: { type: String, required: true },
-    idempotencyKey: { type: String, required: true, unique: true },
+    idempotencyKey: { type: String, required: true },
     batchNumber: { type: String },
     expiryDate: { type: Date },
   },

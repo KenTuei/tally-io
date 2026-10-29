@@ -3,9 +3,13 @@ import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { cn } from '../lib/utils';
+import { useSync } from '../hooks/useSync';
 
 export function AppShell() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Initialise RxDB and background sync
+  useSync();
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">

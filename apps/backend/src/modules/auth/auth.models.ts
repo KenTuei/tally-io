@@ -30,7 +30,6 @@ const userSchema = new Schema<IUser>(
     email: {
       type: String,
       required: true,
-      unique: true,
       lowercase: true,
       trim: true,
     },
@@ -101,7 +100,7 @@ export interface IOrganization extends Document {
 const organizationSchema = new Schema<IOrganization>(
   {
     name: { type: String, required: true, trim: true },
-    slug: { type: String, required: true, unique: true, lowercase: true },
+    slug: { type: String, required: true, lowercase: true },
     businessType: { type: String, required: true },
     currency: { type: String, required: true, default: 'KES' },
     country: { type: String, required: true, default: 'KE' },

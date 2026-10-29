@@ -133,7 +133,7 @@ const paymentAttemptSchema = new Schema<IPaymentAttempt>(
     currency: { type: String, required: true, default: 'KES' },
     status: { type: String, required: true, default: 'confirmed' },
     reference: { type: String },
-    idempotencyKey: { type: String, required: true, unique: true },
+    idempotencyKey: { type: String, required: true },
     initiatedAt: { type: Date, required: true },
     confirmedAt: { type: Date },
   },

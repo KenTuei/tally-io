@@ -15,6 +15,8 @@ import { saleRoutes } from '../modules/sales/sales.routes.js';
 import { syncRoutes } from '../modules/synchronization/sync.routes.js';
 import { ledgerRoutes } from '../modules/ledger/ledger.routes.js';
 import { reportRoutes } from '../modules/reporting/reporting.routes.js';
+import { mpesaRoutes } from '../modules/integrations/mpesa/mpesa.routes.js';
+import { aiRoutes } from '../modules/ai/ai.routes.js';
 import { tenantMiddleware } from '../middleware/tenant.middleware.js';
 import { errorHandler } from '../middleware/error.middleware.js';
 import { requestIdMiddleware } from '../middleware/requestId.middleware.js';
@@ -25,7 +27,6 @@ export async function buildApp(): Promise<FastifyInstance> {
       level: config.logging.level,
     },
     trustProxy: true,
-    disableRequestLogging: false,
     genReqId: () => crypto.randomUUID(),
   });
 
@@ -105,6 +106,17 @@ export async function buildApp(): Promise<FastifyInstance> {
       await protectedRoutes.register(syncRoutes, { prefix: '/sync' });
       await protectedRoutes.register(ledgerRoutes, { prefix: '/ledger' });
       await protectedRoutes.register(reportRoutes, { prefix: '/reports' });
+
+      // Integrations — M-Pesa callback is public (no tenant middleware), STK push is protected
+      await protectedRoutes.register(
+        async (intRoutes) => {
+          await intRoutes.register(mpesaRoutes, { prefix: '/mpesa' });
+        },
+        { prefix: '/integrations' },
+      );
+
+      // AI Assistant
+      await protectedRoutes.register(aiRoutes, { prefix: '/ai' });
     },
     { prefix: API_PREFIX },
   );
