@@ -17,15 +17,20 @@ import { ledgerRoutes } from '../modules/ledger/ledger.routes.js';
 import { reportRoutes } from '../modules/reporting/reporting.routes.js';
 import { mpesaRoutes } from '../modules/integrations/mpesa/mpesa.routes.js';
 import { aiRoutes } from '../modules/ai/ai.routes.js';
+import { branchRoutes } from '../modules/branches/branches.routes.js';
+import { customerRoutes } from '../modules/customers/customers.routes.js';
+import { expenseRoutes } from '../modules/expenses/expenses.routes.js';
+import { onboardingRoutes } from '../modules/onboarding/onboarding.routes.js';
+import { googleAuthRoutes } from '../modules/auth/google.routes.js';
 import { tenantMiddleware } from '../middleware/tenant.middleware.js';
 import { errorHandler } from '../middleware/error.middleware.js';
 import { requestIdMiddleware } from '../middleware/requestId.middleware.js';
+import { seedSubscriptionPlans } from '../modules/onboarding/onboarding.service.js';
+import { startWorkers } from '../queues/queues.js';
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
-    logger: {
-      level: config.logging.level,
-    },
+    logger: { level: config.logging.level },
     trustProxy: true,
     genReqId: () => crypto.randomUUID(),
   });
@@ -47,90 +52,80 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(rateLimit, {
     max: 300,
     timeWindow: '1 minute',
-    keyGenerator: (req) => {
-      // Rate limit by user ID if authenticated, otherwise by IP
-      return (req.headers['x-user-id'] as string) ?? req.ip;
-    },
+    keyGenerator: (req) => (req.headers['x-user-id'] as string) ?? req.ip,
   });
 
-  // ----- API Documentation (dev only) ----------------------------------
+  // ----- API Docs (dev only) -------------------------------------------
   if (!config.isProd) {
     await app.register(swagger, {
       openapi: {
-        info: {
-          title: 'Tally.io API',
-          description: 'Tally.io Point of Sale and Business Management API',
-          version: '1.0.0',
-        },
+        info: { title: 'Tally.io API', description: 'Tally.io Business Management API', version: '1.0.0' },
         components: {
-          securitySchemes: {
-            bearerAuth: {
-              type: 'http',
-              scheme: 'bearer',
-              bearerFormat: 'JWT',
-            },
-          },
+          securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' } },
         },
         security: [{ bearerAuth: [] }],
       },
     });
-
-    await app.register(swaggerUi, {
-      routePrefix: '/api/docs',
-    });
+    await app.register(swaggerUi, { routePrefix: '/api/docs' });
   }
 
   // ----- Global middleware ---------------------------------------------
   app.addHook('onRequest', requestIdMiddleware);
 
-  // ----- Connect database ----------------------------------------------
+  // ----- Database + seeding --------------------------------------------
   await connectDatabase();
+  await seedSubscriptionPlans();
+
+  // ----- Start background workers (gracefully handles Redis unavailable) ---
+  try {
+    startWorkers();
+  } catch (err) {
+    app.log.warn({ err }, 'BullMQ workers failed to start — Redis may be unavailable');
+  }
 
   // ----- Routes --------------------------------------------------------
-  const API_PREFIX = '/api/v1';
+  const API = '/api/v1';
 
-  await app.register(healthRoutes, { prefix: `${API_PREFIX}/health` });
+  await app.register(healthRoutes, { prefix: `${API}/health` });
 
   // Public auth routes (no tenant middleware)
-  await app.register(authRoutes, { prefix: `${API_PREFIX}/auth` });
+  await app.register(authRoutes, { prefix: `${API}/auth` });
+  await app.register(googleAuthRoutes, { prefix: `${API}/auth` });
 
-  // Authenticated routes — tenant middleware applied per route group
+  // Authenticated + tenant-scoped routes
   await app.register(
-    async (protectedRoutes) => {
-      protectedRoutes.addHook('onRequest', tenantMiddleware);
+    async (protected_) => {
+      protected_.addHook('onRequest', tenantMiddleware);
 
-      await protectedRoutes.register(userRoutes, { prefix: '/users' });
-      await protectedRoutes.register(productRoutes, { prefix: '/products' });
-      await protectedRoutes.register(inventoryRoutes, { prefix: '/inventory' });
-      await protectedRoutes.register(saleRoutes, { prefix: '/sales' });
-      await protectedRoutes.register(syncRoutes, { prefix: '/sync' });
-      await protectedRoutes.register(ledgerRoutes, { prefix: '/ledger' });
-      await protectedRoutes.register(reportRoutes, { prefix: '/reports' });
+      await protected_.register(userRoutes, { prefix: '/users' });
+      await protected_.register(productRoutes, { prefix: '/products' });
+      await protected_.register(inventoryRoutes, { prefix: '/inventory' });
+      await protected_.register(saleRoutes, { prefix: '/sales' });
+      await protected_.register(syncRoutes, { prefix: '/sync' });
+      await protected_.register(ledgerRoutes, { prefix: '/ledger' });
+      await protected_.register(reportRoutes, { prefix: '/reports' });
+      await protected_.register(branchRoutes, { prefix: '/branches' });
+      await protected_.register(customerRoutes, { prefix: '/customers' });
+      await protected_.register(expenseRoutes, { prefix: '/expenses' });
+      await protected_.register(onboardingRoutes, { prefix: '/onboarding' });
+      await protected_.register(aiRoutes, { prefix: '/ai' });
 
-      // Integrations — M-Pesa callback is public (no tenant middleware), STK push is protected
-      await protectedRoutes.register(
+      // Integrations
+      await protected_.register(
         async (intRoutes) => {
           await intRoutes.register(mpesaRoutes, { prefix: '/mpesa' });
         },
         { prefix: '/integrations' },
       );
-
-      // AI Assistant
-      await protectedRoutes.register(aiRoutes, { prefix: '/ai' });
     },
-    { prefix: API_PREFIX },
+    { prefix: API },
   );
 
-  // ----- Error handler -------------------------------------------------
+  // ----- Error + not-found handlers ------------------------------------
   app.setErrorHandler(errorHandler);
-
-  // ----- Not found handler --------------------------------------------
   app.setNotFoundHandler((_req, reply) => {
     void reply.status(404).send({
-      error: {
-        code: 'NOT_FOUND',
-        message: 'The requested resource was not found',
-      },
+      error: { code: 'NOT_FOUND', message: 'The requested resource was not found' },
     });
   });
 

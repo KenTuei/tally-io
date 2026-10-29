@@ -77,6 +77,44 @@ export async function register(input: RegisterInput) {
     acceptedAt: new Date(),
   });
 
+  // Generate a 6-digit email verification code
+  const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const verificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  await UserModel.findByIdAndUpdate(user._id, {
+    $set: {
+      emailVerificationCode: verificationCode,
+      emailVerificationExpiry: verificationExpiry,
+    },
+  });
+
+  // Send verification email (non-blocking)
+  void (async () => {
+    try {
+      const { sendEmail, canSendEmail, buildVerificationEmail } = await import('../email/email.service.js');
+      if (await canSendEmail(user.email, 'verification', 24)) {
+        const verifyUrl = `${config.frontendUrl}/verify-email?code=${verificationCode}&email=${encodeURIComponent(user.email)}`;
+        const emailData = buildVerificationEmail({ firstName: user.firstName, code: verificationCode, verifyUrl });
+        await sendEmail({ to: user.email, ...emailData, template: 'verification', userId: user._id.toString(), organizationId: organization._id.toString() });
+      }
+    } catch { /* non-blocking */ }
+  })();
+
+  // Schedule onboarding reminder emails (non-blocking)
+  void (async () => {
+    try {
+      const { scheduleOnboardingReminders } = await import('../onboarding/onboarding.service.js');
+      await scheduleOnboardingReminders(user._id.toString(), organization._id.toString());
+    } catch { /* non-blocking */ }
+  })();
+
+  // Provision trial subscription (non-blocking)
+  void (async () => {
+    try {
+      const { provisionTrialSubscription } = await import('../onboarding/onboarding.service.js');
+      await provisionTrialSubscription(organization._id.toString());
+    } catch { /* non-blocking */ }
+  })();
+
   // Generate tokens
   const tokenPayload: Omit<JwtPayload, 'iat' | 'exp' | 'jti'> = {
     sub: user._id.toString(),

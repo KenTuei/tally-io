@@ -3,6 +3,7 @@ import { useAuthStore } from '../stores/authStore';
 import { AppShell } from '../layouts/AppShell';
 import { LoginPage } from '../features/auth/LoginPage';
 import { RegisterPage } from '../features/auth/RegisterPage';
+import { OnboardingWizard } from '../features/onboarding/OnboardingWizard';
 import { OverviewPage } from '../features/overview/OverviewPage';
 import { POSPage } from '../features/pos/POSPage';
 import { ProductsPage } from '../features/products/ProductsPage';
@@ -11,25 +12,39 @@ import { InventoryPage } from '../features/inventory/InventoryPage';
 import { ReportsPage } from '../features/reports/ReportsPage';
 import { SettingsPage } from '../features/settings/SettingsPage';
 import { AIAssistantPage } from '../features/ai/AIAssistantPage';
+import { BranchesPage } from '../features/branches/BranchesPage';
+import { CustomersPage } from '../features/customers/CustomersPage';
+import { ExpensesPage } from '../features/expenses/ExpensesPage';
 import { NotFoundPage } from '../components/NotFoundPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const { isAuthenticated, organization } = useAuthStore();
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
+  // Redirect to onboarding if not complete (but not if already on onboarding page)
+  if (
+    organization &&
+    (organization as { onboardingStatus?: string }).onboardingStatus !== 'complete' &&
+    (organization as { onboardingStatus?: string }).onboardingStatus !== undefined
+  ) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+function OnboardingRoute({ children }: { children: React.ReactNode }) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-
-  if (isAuthenticated) {
-    return <Navigate to="/" replace />;
-  }
-
+  if (isAuthenticated) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
@@ -37,43 +52,27 @@ export default function App() {
   return (
     <Routes>
       {/* Public routes */}
-      <Route
-        path="/login"
-        element={
-          <PublicRoute>
-            <LoginPage />
-          </PublicRoute>
-        }
-      />
-      <Route
-        path="/register"
-        element={
-          <PublicRoute>
-            <RegisterPage />
-          </PublicRoute>
-        }
-      />
+      <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+      <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
 
-      {/* Protected app routes — wrapped in AppShell */}
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <AppShell />
-          </ProtectedRoute>
-        }
-      >
+      {/* Onboarding — authenticated but may be incomplete */}
+      <Route path="/onboarding" element={<OnboardingRoute><OnboardingWizard /></OnboardingRoute>} />
+
+      {/* Protected app routes */}
+      <Route path="/" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
         <Route index element={<OverviewPage />} />
         <Route path="pos" element={<POSPage />} />
         <Route path="products" element={<ProductsPage />} />
         <Route path="sales" element={<SalesPage />} />
         <Route path="inventory" element={<InventoryPage />} />
+        <Route path="customers" element={<CustomersPage />} />
+        <Route path="expenses" element={<ExpensesPage />} />
+        <Route path="branches" element={<BranchesPage />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="ai" element={<AIAssistantPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
 
-      {/* 404 */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );

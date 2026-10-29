@@ -86,4 +86,33 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     );
     return reply.send({ data: response });
   });
+
+  // POST /api/v1/auth/verify-email
+  app.post('/verify-email', async (request, reply) => {
+    const body = request.body as { email?: string; code?: string };
+    if (!body.email || !body.code) {
+      throw new ValidationError('Email and verification code are required');
+    }
+
+    const { UserModel } = await import('./auth.models.js');
+
+    const user = await UserModel.findOne({ email: body.email.toLowerCase() })
+      .select('+emailVerificationCode +emailVerificationExpiry');
+
+    // Use same error for not-found and wrong code to prevent enumeration
+    const invalid = () => { throw new ValidationError('Invalid or expired verification code'); };
+
+    if (!user) return invalid();
+    if (user.emailVerified) return reply.send({ data: { verified: true } });
+    if (!user.emailVerificationCode) return invalid();
+    if (new Date() > (user.emailVerificationExpiry ?? new Date(0))) return invalid();
+    if (user.emailVerificationCode !== body.code) return invalid();
+
+    await UserModel.findByIdAndUpdate(user._id, {
+      $set: { emailVerified: true },
+      $unset: { emailVerificationCode: 1, emailVerificationExpiry: 1 },
+    });
+
+    return reply.send({ data: { verified: true } });
+  });
 }

@@ -11,6 +11,7 @@ interface AuthState {
     businessType: string;
     currency: string;
     country: string;
+    onboardingStatus?: string;
   } | null;
   accessToken: string | null;
   refreshToken: string | null;

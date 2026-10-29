@@ -20,6 +20,14 @@ const envSchema = z.object({
   // Redis
   REDIS_URL: z.string().default('redis://localhost:6379'),
 
+  // Google OAuth
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+  GOOGLE_CALLBACK_URL: z
+    .string()
+    .url()
+    .default('http://localhost:3000/api/v1/auth/google/callback'),
+
   // M-Pesa (optional in dev)
   MPESA_ENVIRONMENT: z.enum(['sandbox', 'production']).default('sandbox'),
   MPESA_CONSUMER_KEY: z.string().optional(),
@@ -32,10 +40,23 @@ const envSchema = z.object({
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_MODEL: z.string().default('gemini-2.0-flash'),
 
-  // Email
+  // Email — provider: resend | sendgrid | console (dev)
+  EMAIL_PROVIDER: z.enum(['resend', 'sendgrid', 'console']).default('console'),
   EMAIL_FROM: z.string().default('noreply@tally.io'),
   EMAIL_FROM_NAME: z.string().default('Tally.io'),
+  RESEND_API_KEY: z.string().optional(),
   SENDGRID_API_KEY: z.string().optional(),
+
+  // Subscription enforcement
+  SUBSCRIPTION_ENFORCEMENT: z
+    .string()
+    .transform((v) => v !== 'false')
+    .default('true'),
+  DEFAULT_TRIAL_DAYS: z.coerce.number().default(14),
+
+  // Maps (for branch map view)
+  MAPS_PROVIDER: z.enum(['google', 'mapbox', 'none']).default('none'),
+  GOOGLE_MAPS_API_KEY: z.string().optional(),  // server-side only
 
   // Logging
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
@@ -52,8 +73,6 @@ function validateConfig() {
     const missing = result.error.errors
       .map((e) => `  ${e.path.join('.')}: ${e.message}`)
       .join('\n');
-
-    // Using console here intentionally — logger isn't ready yet
     console.error('❌ Invalid environment configuration:\n' + missing);
     console.error('\nCopy .env.example to .env and fill in the required values.');
     process.exit(1);
@@ -87,6 +106,13 @@ export const config = {
     url: env.REDIS_URL,
   },
 
+  google: {
+    clientId: env.GOOGLE_CLIENT_ID,
+    clientSecret: env.GOOGLE_CLIENT_SECRET,
+    callbackUrl: env.GOOGLE_CALLBACK_URL,
+    isConfigured: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
+  },
+
   mpesa: {
     environment: env.MPESA_ENVIRONMENT,
     consumerKey: env.MPESA_CONSUMER_KEY,
@@ -109,10 +135,22 @@ export const config = {
   },
 
   email: {
+    provider: env.EMAIL_PROVIDER,
     from: env.EMAIL_FROM,
     fromName: env.EMAIL_FROM_NAME,
+    resendApiKey: env.RESEND_API_KEY,
     sendgridApiKey: env.SENDGRID_API_KEY,
-    isConfigured: !!env.SENDGRID_API_KEY,
+    isConfigured: !!(env.RESEND_API_KEY || env.SENDGRID_API_KEY),
+  },
+
+  subscription: {
+    enforcement: env.SUBSCRIPTION_ENFORCEMENT,
+    defaultTrialDays: env.DEFAULT_TRIAL_DAYS,
+  },
+
+  maps: {
+    provider: env.MAPS_PROVIDER,
+    googleApiKey: env.GOOGLE_MAPS_API_KEY,
   },
 
   logging: {
