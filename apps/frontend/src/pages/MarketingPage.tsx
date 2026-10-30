@@ -15,13 +15,6 @@ import { useAuthStore } from '../stores/authStore';
 import { Navigate } from 'react-router-dom';
 
 export function MarketingPage() {
-  // If already authenticated with completed onboarding, send to app
-  const { isAuthenticated, organization } = useAuthStore();
-
-  if (isAuthenticated && organization?.onboardingStatus === 'complete') {
-    return <Navigate to="/app" replace />;
-  }
-
   return (
     <div className="min-h-screen bg-white overflow-x-hidden">
       <MarketingNavbar />

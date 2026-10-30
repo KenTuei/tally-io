@@ -6,8 +6,10 @@ import {
   Brain, Package, ArrowRightLeft, TrendingUp, Receipt, Bell,
   Store, ShoppingBag, Pill, Wrench, Scissors, Utensils, Smartphone,
   Sparkles, ChevronDown, X, Menu, BookOpen, LifeBuoy, HelpCircle, Mail,
+  LayoutDashboard,
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
+import { useAuthStore } from '../../../stores/authStore';
 
 const PRODUCT_MENU = {
   'Run your business': [
@@ -60,6 +62,7 @@ export function MarketingNavbar() {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const navigate = useNavigate();
   const menuRef = useRef<HTMLDivElement>(null);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -147,15 +150,27 @@ export function MarketingNavbar() {
 
             {/* Right actions */}
             <div className="hidden lg:flex items-center gap-3">
-              <Link to="/login" className="text-sm font-medium text-slate-700 hover:text-slate-900 transition-colors px-3 py-2">
-                Sign in
-              </Link>
-              <button
-                onClick={() => navigate('/register')}
-                className="text-sm font-semibold text-white bg-slate-900 px-5 py-2.5 rounded-xl hover:bg-slate-800 transition-all shadow-sm hover:shadow-md"
-              >
-                Get started
-              </button>
+              {isAuthenticated ? (
+                <button
+                  onClick={() => navigate('/app')}
+                  className="flex items-center gap-2 text-sm font-semibold text-white bg-slate-900 px-5 py-2.5 rounded-xl hover:bg-slate-800 transition-all shadow-sm"
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  Go to dashboard
+                </button>
+              ) : (
+                <>
+                  <Link to="/login" className="text-sm font-medium text-slate-700 hover:text-slate-900 transition-colors px-3 py-2">
+                    Sign in
+                  </Link>
+                  <button
+                    onClick={() => navigate('/register')}
+                    className="text-sm font-semibold text-white bg-slate-900 px-5 py-2.5 rounded-xl hover:bg-slate-800 transition-all shadow-sm hover:shadow-md"
+                  >
+                    Get started
+                  </button>
+                </>
+              )}
             </div>
 
             {/* Mobile toggle */}
@@ -274,6 +289,7 @@ function ResourcesMenu() {
 function MobileNav({ onClose }: { onClose: () => void }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const navigate = useNavigate();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   const toggle = (item: string) => setExpanded(expanded === item ? null : item);
 
@@ -354,15 +370,26 @@ function MobileNav({ onClose }: { onClose: () => void }) {
 
         {/* Actions */}
         <div className="border-t border-slate-100 p-5 space-y-2.5 flex-shrink-0">
-          <Link to="/login" onClick={onClose} className="block w-full text-center py-2.5 text-sm font-medium text-slate-700 border border-slate-200 rounded-xl">
-            Sign in
-          </Link>
-          <button
-            onClick={() => { onClose(); navigate('/register'); }}
-            className="block w-full text-center py-2.5 text-sm font-semibold text-white bg-slate-900 rounded-xl"
-          >
-            Get started
-          </button>
+          {isAuthenticated ? (
+            <button
+              onClick={() => { onClose(); navigate('/app'); }}
+              className="block w-full text-center py-2.5 text-sm font-semibold text-white bg-slate-900 rounded-xl"
+            >
+              Go to dashboard
+            </button>
+          ) : (
+            <>
+              <Link to="/login" onClick={onClose} className="block w-full text-center py-2.5 text-sm font-medium text-slate-700 border border-slate-200 rounded-xl">
+                Sign in
+              </Link>
+              <button
+                onClick={() => { onClose(); navigate('/register'); }}
+                className="block w-full text-center py-2.5 text-sm font-semibold text-white bg-slate-900 rounded-xl"
+              >
+                Get started
+              </button>
+            </>
+          )}
         </div>
       </div>
     </motion.div>
