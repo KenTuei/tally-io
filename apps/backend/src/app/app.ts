@@ -23,6 +23,8 @@ import { expenseRoutes } from '../modules/expenses/expenses.routes.js';
 import { supplierRoutes } from '../modules/suppliers/suppliers.routes.js';
 import { onboardingRoutes } from '../modules/onboarding/onboarding.routes.js';
 import { googleAuthRoutes } from '../modules/auth/google.routes.js';
+import { taxRoutes } from '../modules/taxes/taxes.routes.js';
+import { invoiceRoutes } from '../modules/invoices/invoices.routes.js';
 import { tenantMiddleware } from '../middleware/tenant.middleware.js';
 import { errorHandler } from '../middleware/error.middleware.js';
 import { requestIdMiddleware } from '../middleware/requestId.middleware.js';
@@ -111,6 +113,8 @@ export async function buildApp(): Promise<FastifyInstance> {
       await protected_.register(supplierRoutes, { prefix: '/suppliers' });
       await protected_.register(onboardingRoutes, { prefix: '/onboarding' });
       await protected_.register(aiRoutes, { prefix: '/ai' });
+      await protected_.register(taxRoutes, { prefix: '/taxes' });
+      await protected_.register(invoiceRoutes, { prefix: '/invoices' });
 
       // Integrations
       await protected_.register(

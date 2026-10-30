@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { PageHeader } from '../../components/PageHeader';
 import { useAuthStore } from '../../stores/authStore';
-import { Settings, Building2, Users, CreditCard, Link, Bell, Shield, Palette } from 'lucide-react';
+import { Settings, Building2, Users, CreditCard, Link, Bell, Shield, Palette, Receipt, Percent } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { TaxSettings } from './TaxSettings';
 
-type SettingsTab = 'general' | 'organization' | 'users' | 'billing' | 'integrations' | 'notifications' | 'security' | 'appearance';
+type SettingsTab = 'general' | 'organization' | 'taxes' | 'receipts' | 'users' | 'billing' | 'integrations' | 'notifications' | 'security' | 'appearance';
 
 const tabs: Array<{ id: SettingsTab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
   { id: 'general', label: 'General', icon: Settings },
   { id: 'organization', label: 'Organization', icon: Building2 },
+  { id: 'taxes', label: 'Taxes', icon: Percent },
+  { id: 'receipts', label: 'Receipts', icon: Receipt },
   { id: 'users', label: 'Users & Roles', icon: Users },
   { id: 'billing', label: 'Subscription', icon: CreditCard },
   { id: 'integrations', label: 'Integrations', icon: Link },
@@ -176,6 +179,7 @@ export function SettingsPage() {
   const renderContent = () => {
     switch (activeTab) {
       case 'general': return <GeneralSettings />;
+      case 'taxes': return <TaxSettings />;
       case 'integrations': return <IntegrationsSettings />;
       default: return <ComingSoon feature={tabs.find(t => t.id === activeTab)?.label ?? 'Settings'} />;
     }

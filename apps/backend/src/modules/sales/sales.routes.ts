@@ -7,7 +7,6 @@ import { can } from '../../middleware/tenant.middleware.js';
 import { SaleModel, SaleItemModel, PaymentAttemptModel } from './sales.models.js';
 import { ProductModel, StockProjectionModel } from '../products/products.models.js';
 import { LedgerEventModel } from '../ledger/ledger.models.js';
-
 const completeSaleSchema = z.object({
   branchId: z.string().min(1),
   registerId: z.string().min(1),
@@ -306,6 +305,170 @@ export async function saleRoutes(app: FastifyInstance): Promise<void> {
         id: sale._id.toString(),
         items: items.map((i) => ({ ...i, id: i._id.toString() })),
       },
+    });
+  });
+
+  // GET /api/v1/sales/:id/receipt.pdf
+  app.get('/:id/receipt.pdf', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const { saleReceiptPDFHandler } = await import('../invoices/invoices.routes.js');
+
+    const pdfBytes = await saleReceiptPDFHandler(id, request.tenantId);
+    if (!pdfBytes) throw new NotFoundError('Sale');
+
+    const sale = await SaleModel.findById(id).lean();
+    const filename = `receipt-${sale?.receiptNumber ?? id}.pdf`;
+    void reply.header('Content-Type', 'application/pdf');
+    void reply.header('Content-Disposition', `attachment; filename="${filename}"`);
+    return reply.send(Buffer.from(pdfBytes));
+  });
+
+  // POST /api/v1/sales/:id/void
+  app.post('/:id/void', async (request, reply) => {
+    if (!can(request.userRole, 'sale:void')) {
+      throw new ForbiddenError('You do not have permission to void sales');
+    }
+
+    const { id } = request.params as { id: string };
+    const orgId = new mongoose.Types.ObjectId(request.tenantId);
+    const body = (request.body as { reason?: string }) ?? {};
+
+    const sale = await SaleModel.findOne({ _id: id, organizationId: orgId });
+    if (!sale) throw new NotFoundError('Sale');
+    if (sale.status === 'voided') {
+      throw new ValidationError('Sale is already voided');
+    }
+    if (!['completed', 'held', 'pending_payment'].includes(sale.status)) {
+      throw new ValidationError('Only completed or pending sales can be voided');
+    }
+
+    // Restore stock
+    const items = await SaleItemModel.find({ saleId: id, organizationId: orgId }).lean();
+    for (const item of items) {
+      await StockProjectionModel.findOneAndUpdate(
+        { organizationId: orgId, branchId: sale.branchId, productId: item.productId },
+        { $inc: { quantityOnHand: item.quantity } },
+        { upsert: true },
+      );
+      await (await import('../inventory/inventory.models.js')).InventoryEventModel.create({
+        organizationId: orgId,
+        branchId: sale.branchId,
+        productId: item.productId,
+        type: 'returned_to_stock',
+        quantity: item.quantity,
+        referenceType: 'sale',
+        referenceId: sale._id,
+        reason: `Void: ${body.reason ?? 'No reason given'}`,
+        actorId: new mongoose.Types.ObjectId(request.userId),
+        deviceId: request.deviceId ?? 'unknown',
+        idempotencyKey: uuidv4(),
+      });
+    }
+
+    await SaleModel.findByIdAndUpdate(id, {
+      $set: {
+        status: 'voided',
+        voidedAt: new Date(),
+        voidedBy: new mongoose.Types.ObjectId(request.userId),
+        voidReason: body.reason ?? 'No reason given',
+      },
+    });
+
+    // Ledger event
+    await LedgerEventModel.create({
+      eventId: uuidv4(),
+      idempotencyKey: uuidv4(),
+      correlationId: uuidv4(),
+      organizationId: orgId,
+      branchId: sale.branchId,
+      deviceId: request.deviceId ?? 'unknown',
+      eventType: 'SALE_VOIDED',
+      schemaVersion: 1,
+      entityType: 'sale',
+      entityId: sale._id,
+      actorId: new mongoose.Types.ObjectId(request.userId),
+      actorType: 'user',
+      clientTimestamp: new Date(),
+      serverTimestamp: new Date(),
+      offlineCreated: false,
+      payload: { receiptNumber: sale.receiptNumber, reason: body.reason },
+    });
+
+    return reply.send({ data: { success: true, status: 'voided' } });
+  });
+
+  // POST /api/v1/sales/:id/refund
+  app.post('/:id/refund', async (request, reply) => {
+    if (!can(request.userRole, 'refund:create')) {
+      throw new ForbiddenError('You do not have permission to issue refunds');
+    }
+
+    const { id } = request.params as { id: string };
+    const orgId = new mongoose.Types.ObjectId(request.tenantId);
+
+    const refundSchema = z.object({
+      reason: z.string().min(1).max(500),
+      items: z.array(z.object({
+        saleItemId: z.string(),
+        quantity: z.number().int().positive(),
+      })).min(1),
+      refundPaymentMethod: z.enum(['cash', 'mpesa', 'card', 'bank_transfer', 'other']),
+      restockItems: z.boolean().default(true),
+    });
+
+    const body = refundSchema.parse(request.body);
+    const sale = await SaleModel.findOne({ _id: id, organizationId: orgId });
+    if (!sale) throw new NotFoundError('Sale');
+    if (!['completed', 'partially_refunded'].includes(sale.status)) {
+      throw new ValidationError('Only completed sales can be refunded');
+    }
+
+    const allItems = await SaleItemModel.find({ saleId: id, organizationId: orgId }).lean();
+    const itemMap = new Map(allItems.map((i) => [i._id.toString(), i]));
+
+    let refundTotal = 0;
+    for (const ri of body.items) {
+      const saleItem = itemMap.get(ri.saleItemId);
+      if (!saleItem) throw new ValidationError(`Sale item ${ri.saleItemId} not found`);
+      if (ri.quantity > saleItem.quantity) throw new ValidationError(`Refund quantity exceeds sold quantity`);
+      const unitRefund = Math.round(saleItem.lineTotal / saleItem.quantity);
+      refundTotal += unitRefund * ri.quantity;
+
+      // Restock if requested
+      if (body.restockItems) {
+        await StockProjectionModel.findOneAndUpdate(
+          { organizationId: orgId, branchId: sale.branchId, productId: saleItem.productId },
+          { $inc: { quantityOnHand: ri.quantity } },
+          { upsert: true },
+        );
+      }
+    }
+
+    const newStatus = refundTotal >= sale.total ? 'refunded' : 'partially_refunded';
+    await SaleModel.findByIdAndUpdate(id, { $set: { status: newStatus } });
+
+    // Ledger event
+    await LedgerEventModel.create({
+      eventId: uuidv4(),
+      idempotencyKey: uuidv4(),
+      correlationId: uuidv4(),
+      organizationId: orgId,
+      branchId: sale.branchId,
+      deviceId: request.deviceId ?? 'unknown',
+      eventType: 'REFUND_COMPLETED',
+      schemaVersion: 1,
+      entityType: 'sale',
+      entityId: sale._id,
+      actorId: new mongoose.Types.ObjectId(request.userId),
+      actorType: 'user',
+      clientTimestamp: new Date(),
+      serverTimestamp: new Date(),
+      offlineCreated: false,
+      payload: { refundTotal, reason: body.reason, newStatus },
+    });
+
+    return reply.send({
+      data: { success: true, refundTotal, newStatus, receiptNumber: sale.receiptNumber },
     });
   });
 }

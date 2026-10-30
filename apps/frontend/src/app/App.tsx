@@ -22,6 +22,7 @@ import { SuppliersPage } from '../features/suppliers/SuppliersPage';
 import { PurchasingPage } from '../features/purchasing/PurchasingPage';
 import { NotFoundPage } from '../components/NotFoundPage';
 import { MarketingPage } from '../pages/MarketingPage';
+import { InvoicesPage } from '../features/invoices/InvoicesPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, organization } = useAuthStore();
@@ -80,6 +81,8 @@ export default function App() {
         <Route path="reports" element={<ReportsPage />} />
         <Route path="ai" element={<AIAssistantPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="invoices" element={<InvoicesPage />} />
+        <Route path="quotes" element={<InvoicesPage />} />
       </Route>
 
       {/* 404 */}

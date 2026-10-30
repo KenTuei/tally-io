@@ -8,6 +8,7 @@ import {
   ArrowRight,
   RefreshCw,
 } from 'lucide-react';
+import { SetupChecklist } from '../../components/SetupChecklist';
 import {
   AreaChart,
   Area,
@@ -78,6 +79,9 @@ export function OverviewPage() {
           </button>
         }
       />
+
+      {/* Setup checklist — shown to new users until all steps are complete */}
+      <SetupChecklist />
 
       {error && (
         <div className="mb-6 p-4 rounded-xl border border-destructive/20 bg-destructive/5 text-sm text-destructive">

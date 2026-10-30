@@ -7,6 +7,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { api, ApiError } from '../../lib/api';
 import { formatMoney, cn } from '../../lib/utils';
 import type { Product } from '@tally/shared-types';
+import { CreateProductModal } from './CreateProductModal';
 
 interface ProductsResponse {
   data: Product[];
@@ -17,6 +18,7 @@ export function ProductsPage() {
   const [searchParams] = useSearchParams();
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [showCreate, setShowCreate] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => { setSearch(searchParams.get('q') ?? ''); setPage(1); }, [searchParams]);
@@ -48,7 +50,10 @@ export function ProductsPage() {
         title="Products"
         description={pagination ? `${pagination.total} products` : undefined}
         actions={
-          <button className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+          <button
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
             <Plus className="w-4 h-4" />
             Add product
           </button>
@@ -188,6 +193,15 @@ export function ProductsPage() {
           </>
         )}
       </div>
+      {showCreate && (
+        <CreateProductModal
+          onClose={() => setShowCreate(false)}
+          onCreated={() => {
+            setShowCreate(false);
+            void queryClient.invalidateQueries({ queryKey: ['products'] });
+          }}
+        />
+      )}
     </div>
   );
 }

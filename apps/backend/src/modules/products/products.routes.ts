@@ -88,6 +88,45 @@ export async function productRoutes(app: FastifyInstance): Promise<void> {
     });
   });
 
+  // POST /api/v1/products/categories
+  app.post('/categories', async (request, reply) => {
+    if (!can(request.userRole, 'product:create')) {
+      throw new ForbiddenError('Permission denied');
+    }
+
+    const body = (request.body as { name?: string; parentId?: string; sortOrder?: number }) ?? {};
+    if (!body.name?.trim()) throw new ValidationError('Category name is required');
+
+    const category = await CategoryModel.create({
+      organizationId: new mongoose.Types.ObjectId(request.tenantId),
+      name: body.name.trim(),
+      parentId: body.parentId ? new mongoose.Types.ObjectId(body.parentId) : undefined,
+      sortOrder: body.sortOrder ?? 0,
+      isActive: true,
+    });
+
+    return reply.status(201).send({ data: { ...category.toObject(), id: category._id.toString() } });
+  });
+
+  // PATCH /api/v1/products/categories/:id
+  app.patch('/categories/:id', async (request, reply) => {
+    if (!can(request.userRole, 'product:update')) {
+      throw new ForbiddenError('Permission denied');
+    }
+
+    const { id } = request.params as { id: string };
+    const body = request.body as Record<string, unknown>;
+
+    const category = await CategoryModel.findOneAndUpdate(
+      { _id: id, organizationId: new mongoose.Types.ObjectId(request.tenantId) },
+      { $set: body },
+      { new: true },
+    ).lean();
+
+    if (!category) throw new NotFoundError('Category');
+    return reply.send({ data: { ...category, id: category._id.toString() } });
+  });
+
   // GET /api/v1/products/:id
   app.get('/:id', async (request, reply) => {
     const { id } = request.params as { id: string };

@@ -17,7 +17,9 @@ import {
 import { api, ApiError } from '../../lib/api';
 import { formatMoney, cn } from '../../lib/utils';
 import { useAuthStore } from '../../stores/authStore';
+import { usePOSSessionStore } from '../../stores/posSessionStore';
 import type { Product, CartItem, CompleteSaleRequest } from '@tally/shared-types';
+import { POSSessionSetup } from './POSSessionSetup';
 
 // ---- Cart store (local to POS, no persistence needed between page navigations) ----
 function useCart() {
@@ -293,16 +295,22 @@ export function POSPage() {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showPayment, setShowPayment] = useState(false);
-  const [saleComplete, setSaleComplete] = useState<{ receiptNumber: string } | null>(null);
+  const [saleComplete, setSaleComplete] = useState<{ id: string; receiptNumber: string } | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
 
   const cart = useCart();
   const { tenantId } = { tenantId: useAuthStore((s) => s.organization?.id) ?? '' };
+  const session = usePOSSessionStore();
 
   useEffect(() => {
     searchRef.current?.focus();
   }, []);
+
+  // Gate: require open session before POS is usable
+  if (!session.isOpen) {
+    return <POSSessionSetup />;
+  }
 
   const { data: products = [], isLoading: productsLoading } = useQuery<Product[]>({
     queryKey: ['pos-products', search, selectedCategory],
@@ -327,7 +335,7 @@ export function POSPage() {
       api.post<{ id: string; receiptNumber: string }>('/sales', req),
     onSuccess: (data) => {
       setShowPayment(false);
-      setSaleComplete({ receiptNumber: data.receiptNumber });
+      setSaleComplete({ id: data.id, receiptNumber: data.receiptNumber });
       cart.clear();
       void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
@@ -336,9 +344,9 @@ export function POSPage() {
   const handlePaymentConfirm = (method: 'cash' | 'mpesa', amountTendered: number) => {
     if (cart.items.length === 0) return;
     completeSaleMutation.mutate({
-      branchId: '', // TODO: from active session
-      registerId: '',
-      shiftId: '',
+      branchId: session.branchId ?? '',
+      registerId: session.registerId ?? '',
+      shiftId: session.shiftId ?? '',
       items: cart.items.map((i) => ({
         productId: i.productId,
         variantId: i.variantId,
@@ -362,8 +370,26 @@ export function POSPage() {
           Receipt <span className="font-mono font-medium">{saleComplete.receiptNumber}</span>
         </p>
         <div className="flex gap-3 mt-6">
-          <button className="px-4 py-2 text-sm rounded-lg border border-border hover:bg-muted transition-colors">
-            Print receipt
+          <button
+            onClick={async () => {
+              if (!saleComplete?.id) return;
+              try {
+                const accessToken = useAuthStore.getState().accessToken ?? '';
+                const res = await fetch(`/api/v1/sales/${saleComplete.id}/receipt.pdf`, {
+                  headers: { Authorization: `Bearer ${accessToken}` },
+                });
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `receipt-${saleComplete.receiptNumber}.pdf`;
+                a.click();
+                URL.revokeObjectURL(url);
+              } catch { /* silent */ }
+            }}
+            className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg border border-border hover:bg-muted transition-colors"
+          >
+            Download receipt
           </button>
           <button
             onClick={() => setSaleComplete(null)}

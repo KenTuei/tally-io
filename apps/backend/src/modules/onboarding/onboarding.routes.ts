@@ -9,6 +9,8 @@ import {
 import { OrganizationModel } from '../auth/auth.models.js';
 import { SubscriptionPlanModel, SubscriptionModel } from '../subscriptions/subscriptions.models.js';
 import mongoose from 'mongoose';
+import { SetupChecklistModel, DEFAULT_STEPS } from './setup.models.js';
+import type { SetupStepId } from './setup.models.js';
 
 const progressSchema = z.object({
   step: z.number().int().min(0).max(5),
@@ -93,5 +95,79 @@ export async function onboardingRoutes(app: FastifyInstance): Promise<void> {
         bypassEnforcement: subscription?.bypassEnforcement,
       },
     });
+  });
+
+  // ── Setup Checklist ────────────────────────────────────────────────────────
+
+  // GET /api/v1/onboarding/setup-checklist
+  app.get('/setup-checklist', async (request, reply) => {
+    const orgId = new mongoose.Types.ObjectId(request.tenantId);
+
+    let checklist = await SetupChecklistModel.findOne({ organizationId: orgId }).lean();
+
+    if (!checklist) {
+      const doc = await SetupChecklistModel.create({
+        organizationId: orgId,
+        steps: DEFAULT_STEPS.map((s) => ({ id: s.id as SetupStepId, completed: false, dismissed: false })),
+        allComplete: false,
+        hidden: false,
+      });
+      checklist = doc.toObject() as NonNullable<typeof checklist>;
+    }
+
+    const stepsWithMeta = (checklist!.steps ?? []).map((step) => {
+      const meta = DEFAULT_STEPS.find((d) => d.id === step.id);
+      return { ...step, ...meta };
+    });
+
+    const completedCount = stepsWithMeta.filter((s) => s.completed).length;
+
+    return reply.send({
+      data: {
+        steps: stepsWithMeta,
+        completedCount,
+        totalCount: DEFAULT_STEPS.length,
+        allComplete: checklist!.allComplete,
+        hidden: checklist!.hidden,
+      },
+    });
+  });
+
+  // PATCH /api/v1/onboarding/setup-checklist/:stepId/complete
+  app.patch('/setup-checklist/:stepId/complete', async (request, reply) => {
+    const { stepId } = request.params as { stepId: string };
+    const orgId = new mongoose.Types.ObjectId(request.tenantId);
+
+    let checklist = await SetupChecklistModel.findOne({ organizationId: orgId });
+    if (!checklist) {
+      checklist = await SetupChecklistModel.create({
+        organizationId: orgId,
+        steps: DEFAULT_STEPS.map((s) => ({ id: s.id, completed: false, dismissed: false })),
+        allComplete: false,
+        hidden: false,
+      });
+    }
+
+    const stepIndex = checklist.steps.findIndex((s) => s.id === stepId);
+    if (stepIndex !== -1) {
+      checklist.steps[stepIndex]!.completed = true;
+      checklist.steps[stepIndex]!.completedAt = new Date();
+    }
+
+    checklist.allComplete = checklist.steps.every((s) => s.completed);
+    await checklist.save();
+
+    return reply.send({ data: { stepId, completed: true, allComplete: checklist.allComplete } });
+  });
+
+  // PATCH /api/v1/onboarding/setup-checklist/hide
+  app.patch('/setup-checklist/hide', async (request, reply) => {
+    const orgId = new mongoose.Types.ObjectId(request.tenantId);
+    await SetupChecklistModel.findOneAndUpdate(
+      { organizationId: orgId },
+      { $set: { hidden: true } },
+      { upsert: true },
+    );
+    return reply.send({ data: { hidden: true } });
   });
 }

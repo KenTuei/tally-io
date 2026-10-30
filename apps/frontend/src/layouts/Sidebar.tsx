@@ -18,6 +18,7 @@ import {
   Shield,
   Truck,
   DollarSign,
+  FileText,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuthStore } from '../stores/authStore';
@@ -48,6 +49,10 @@ const navItems: NavItem[] = [
   { label: 'Reports', path: '/app/reports', icon: BarChart3, group: 'Analytics' },
   { label: 'AI Assistant', path: '/app/ai', icon: Sparkles, group: 'Analytics' },
 
+  // Documents
+  { label: 'Invoices', path: '/app/invoices', icon: Receipt, group: 'Documents' },
+  { label: 'Quotes', path: '/app/quotes', icon: FileText, group: 'Documents' },
+
   // Admin
   { label: 'Staff', path: '/app/staff', icon: Shield, group: 'Admin' },
   { label: 'Notifications', path: '/app/notifications', icon: Bell, group: 'Admin' },
@@ -55,7 +60,7 @@ const navItems: NavItem[] = [
   { label: 'Settings', path: '/app/settings', icon: Settings, group: 'Admin' },
 ];
 
-const groups = ['Operations', 'Management', 'Analytics', 'Admin'];
+const groups = ['Operations', 'Management', 'Analytics', 'Documents', 'Admin'];
 
 interface SidebarProps {
   collapsed: boolean;
