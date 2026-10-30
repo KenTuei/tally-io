@@ -153,7 +153,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
 
         {/* Notifications */}
         <button
-          onClick={() => navigate('/notifications')}
+          onClick={() => navigate('/app/notifications')}
           className="relative p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           aria-label="Notifications"
         >
@@ -201,7 +201,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                 </div>
                 <button
                   className="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors"
-                  onClick={() => { setUserMenuOpen(false); navigate('/settings'); }}
+                  onClick={() => { setUserMenuOpen(false); navigate('/app/settings'); }}
                 >
                   Settings
                 </button>

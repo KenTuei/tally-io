@@ -96,7 +96,7 @@ export function OnboardingWizard() {
         country: savedAnswers.country ?? organization?.country,
         currency: savedAnswers.currency ?? organization?.currency,
       });
-      if (status.status === 'complete') navigate('/');
+      if (status.status === 'complete') navigate('/app');
     }
   }, [status, navigate, organization]);
 
@@ -116,7 +116,7 @@ export function OnboardingWizard() {
         country: answers.country || organization?.country || 'KE',
         onboardingStatus: 'complete',
       });
-      navigate('/');
+      navigate('/app');
     },
   });
 

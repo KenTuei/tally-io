@@ -21,6 +21,7 @@ import { NotificationsPage } from '../features/notifications/NotificationsPage';
 import { SuppliersPage } from '../features/suppliers/SuppliersPage';
 import { PurchasingPage } from '../features/purchasing/PurchasingPage';
 import { NotFoundPage } from '../components/NotFoundPage';
+import { MarketingPage } from '../pages/MarketingPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, organization } = useAuthStore();
@@ -29,7 +30,6 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" replace />;
   }
 
-  // Redirect to onboarding if not complete (but not if already on onboarding page)
   if (organization?.onboardingStatus && organization.onboardingStatus !== 'complete') {
     return <Navigate to="/onboarding" replace />;
   }
@@ -45,22 +45,25 @@ function OnboardingRoute({ children }: { children: React.ReactNode }) {
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  if (isAuthenticated) return <Navigate to="/" replace />;
+  if (isAuthenticated) return <Navigate to="/app" replace />;
   return <>{children}</>;
 }
 
 export default function App() {
   return (
     <Routes>
-      {/* Public routes */}
+      {/* Marketing landing page — public, always accessible */}
+      <Route path="/" element={<MarketingPage />} />
+
+      {/* Auth routes — redirect to /app if already authenticated */}
       <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
       <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
 
-      {/* Onboarding — authenticated but may be incomplete */}
+      {/* Onboarding — authenticated */}
       <Route path="/onboarding" element={<OnboardingRoute><OnboardingWizard /></OnboardingRoute>} />
 
-      {/* Protected app routes */}
-      <Route path="/" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
+      {/* Authenticated app — all under /app/* */}
+      <Route path="/app" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
         <Route index element={<OverviewPage />} />
         <Route path="pos" element={<POSPage />} />
         <Route path="products" element={<ProductsPage />} />
@@ -68,17 +71,18 @@ export default function App() {
         <Route path="inventory" element={<InventoryPage />} />
         <Route path="customers" element={<CustomersPage />} />
         <Route path="expenses" element={<ExpensesPage />} />
+        <Route path="branches" element={<BranchesPage />} />
         <Route path="registers" element={<RegistersPage />} />
         <Route path="staff" element={<StaffPage />} />
-        <Route path="notifications" element={<NotificationsPage />} />
         <Route path="suppliers" element={<SuppliersPage />} />
         <Route path="purchasing" element={<PurchasingPage />} />
-        <Route path="branches" element={<BranchesPage />} />
+        <Route path="notifications" element={<NotificationsPage />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="ai" element={<AIAssistantPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
 
+      {/* 404 */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );

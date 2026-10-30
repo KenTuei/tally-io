@@ -31,28 +31,28 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   // Operations
-  { label: 'Overview', path: '/', icon: LayoutDashboard, group: 'Operations' },
-  { label: 'Point of Sale', path: '/pos', icon: ShoppingCart, group: 'Operations' },
-  { label: 'Sales', path: '/sales', icon: Receipt, group: 'Operations' },
-  { label: 'Cash Registers', path: '/registers', icon: CreditCard, group: 'Operations' },
+  { label: 'Overview', path: '/app/', icon: LayoutDashboard, group: 'Operations' },
+  { label: 'Point of Sale', path: '/app/pos', icon: ShoppingCart, group: 'Operations' },
+  { label: 'Sales', path: '/app/sales', icon: Receipt, group: 'Operations' },
+  { label: 'Cash Registers', path: '/app/registers', icon: CreditCard, group: 'Operations' },
 
   // Management
-  { label: 'Products', path: '/products', icon: Package, group: 'Management' },
-  { label: 'Inventory', path: '/inventory', icon: Warehouse, group: 'Management' },
-  { label: 'Purchasing', path: '/purchasing', icon: Truck, group: 'Management' },
-  { label: 'Customers', path: '/customers', icon: Users, group: 'Management' },
-  { label: 'Suppliers', path: '/suppliers', icon: Building2, group: 'Management' },
-  { label: 'Expenses', path: '/expenses', icon: DollarSign, group: 'Management' },
+  { label: 'Products', path: '/app/products', icon: Package, group: 'Management' },
+  { label: 'Inventory', path: '/app/inventory', icon: Warehouse, group: 'Management' },
+  { label: 'Purchasing', path: '/app/purchasing', icon: Truck, group: 'Management' },
+  { label: 'Customers', path: '/app/customers', icon: Users, group: 'Management' },
+  { label: 'Suppliers', path: '/app/suppliers', icon: Building2, group: 'Management' },
+  { label: 'Expenses', path: '/app/expenses', icon: DollarSign, group: 'Management' },
 
   // Analytics
-  { label: 'Reports', path: '/reports', icon: BarChart3, group: 'Analytics' },
-  { label: 'AI Assistant', path: '/ai', icon: Sparkles, group: 'Analytics' },
+  { label: 'Reports', path: '/app/reports', icon: BarChart3, group: 'Analytics' },
+  { label: 'AI Assistant', path: '/app/ai', icon: Sparkles, group: 'Analytics' },
 
   // Admin
-  { label: 'Staff', path: '/staff', icon: Shield, group: 'Admin' },
-  { label: 'Notifications', path: '/notifications', icon: Bell, group: 'Admin' },
-  { label: 'Branches', path: '/branches', icon: TrendingUp, group: 'Admin' },
-  { label: 'Settings', path: '/settings', icon: Settings, group: 'Admin' },
+  { label: 'Staff', path: '/app/staff', icon: Shield, group: 'Admin' },
+  { label: 'Notifications', path: '/app/notifications', icon: Bell, group: 'Admin' },
+  { label: 'Branches', path: '/app/branches', icon: TrendingUp, group: 'Admin' },
+  { label: 'Settings', path: '/app/settings', icon: Settings, group: 'Admin' },
 ];
 
 const groups = ['Operations', 'Management', 'Analytics', 'Admin'];
@@ -124,7 +124,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 const Icon = item.icon;
                 const isActive =
                   item.path === '/'
-                    ? location.pathname === '/'
+                    ? location.pathname === '/app/'
                     : location.pathname.startsWith(item.path);
 
                 return (

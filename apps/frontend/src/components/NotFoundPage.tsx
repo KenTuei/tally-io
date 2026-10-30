@@ -19,7 +19,7 @@ export function NotFoundPage() {
             Go back
           </button>
           <Link
-            to="/"
+            to="/app"
             className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
           >
             <Home className="w-4 h-4" />

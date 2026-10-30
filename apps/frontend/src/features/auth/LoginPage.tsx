@@ -55,7 +55,7 @@ export function LoginPage() {
         refreshToken: response.tokens.refreshToken,
       });
 
-      navigate('/');
+      navigate('/app');
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
