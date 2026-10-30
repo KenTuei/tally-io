@@ -110,7 +110,9 @@ export const config = {
     clientId: env.GOOGLE_CLIENT_ID,
     clientSecret: env.GOOGLE_CLIENT_SECRET,
     callbackUrl: env.GOOGLE_CALLBACK_URL,
-    isConfigured: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
+    // ID token verification uses the client ID; a client secret is not needed
+    // for the Google Identity Services browser flow used by the frontend.
+    isConfigured: !!env.GOOGLE_CLIENT_ID,
   },
 
   mpesa: {

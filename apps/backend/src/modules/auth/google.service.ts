@@ -87,7 +87,7 @@ function generateTokens(payload: Omit<JwtPayload, 'iat' | 'exp' | 'jti'>) {
  * Sign in or register with Google.
  * 1. Look up by googleId — if found, sign in.
  * 2. Look up by email — if found and not linked, link Google to the account.
- * 3. Otherwise — create new account (needs organization setup afterward).
+ * 3. Otherwise — create an account, starter organization, and owner membership.
  */
 export async function signInWithGoogle(
   payload: GoogleTokenPayload,
@@ -125,7 +125,8 @@ export async function signInWithGoogle(
       await existingByEmail.save();
       user = existingByEmail;
     } else {
-      // 3. Create new user
+      // 3. Create a user and a starter organization so authenticated onboarding
+      // requests already have a valid tenant claim.
       user = await UserModel.create({
         email: payload.email,
         passwordHash: await bcrypt.hash(randomBytes(32).toString('hex'), 10), // unusable random password
@@ -139,6 +140,34 @@ export async function signInWithGoogle(
         marketingConsent: false,
         refreshTokens: [],
       });
+      const organizationName = `${payload.firstName}'s Business`;
+      const slugBase = organizationName
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+      const organization = await OrganizationModel.create({
+        name: organizationName,
+        slug: `${slugBase || 'business'}-${nanoid(6)}`,
+        businessType: 'other',
+        currency: 'KES',
+        country: 'KE',
+        timezone: 'Africa/Nairobi',
+        contactEmail: payload.email,
+        onboardingStatus: 'pending',
+        onboardingStep: 0,
+        onboardingData: {},
+        isActive: true,
+      });
+      await MembershipModel.create({
+        organizationId: organization._id,
+        userId: user._id,
+        role: 'owner',
+        branchIds: [],
+        isActive: true,
+        acceptedAt: new Date(),
+      });
       isNewUser = true;
     }
   } else if (!user.isActive) {
@@ -150,7 +179,7 @@ export async function signInWithGoogle(
     createdAt: -1,
   });
 
-  let organization = null;
+  let organization: Record<string, unknown> | null = null;
   let needsOnboarding = isNewUser;
 
   if (membership) {
@@ -166,6 +195,14 @@ export async function signInWithGoogle(
       };
       needsOnboarding = org.onboardingStatus !== 'complete';
     }
+  }
+
+  if (!membership || !organization) {
+    throw new AppError(
+      'ORGANIZATION_REQUIRED',
+      'This account has no active business membership. Contact support to restore access.',
+      403,
+    );
   }
 
   // Generate tokens

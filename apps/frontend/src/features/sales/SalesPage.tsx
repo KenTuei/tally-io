@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Search, Receipt, Calendar, Filter } from 'lucide-react';
 import { PageHeader } from '../../components/PageHeader';
@@ -22,10 +23,13 @@ const statusColors: Record<string, string> = {
 };
 
 export function SalesPage() {
+  const [searchParams] = useSearchParams();
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+
+  useEffect(() => { setSearch(searchParams.get('q') ?? ''); setPage(1); }, [searchParams]);
 
   const { data, isLoading, error } = useQuery<SalesResponse>({
     queryKey: ['sales', search, page, dateFrom, dateTo],

@@ -2,6 +2,7 @@
  * Onboarding service — questionnaire, plan recommendation, reminder scheduling.
  */
 import mongoose from 'mongoose';
+import { nanoid } from 'nanoid';
 import { OrganizationModel, UserModel, MembershipModel } from '../auth/auth.models.js';
 import { SubscriptionPlanModel, SubscriptionModel } from '../subscriptions/subscriptions.models.js';
 import { OnboardingReminderModel } from '../email/email.models.js';
@@ -60,13 +61,37 @@ export async function saveOnboardingProgress(
   step: number,
   answers: Partial<OnboardingAnswers>,
 ): Promise<void> {
-  await OrganizationModel.findByIdAndUpdate(organizationId, {
-    $set: {
-      onboardingStatus: step >= 5 ? 'complete' : 'in_progress',
-      onboardingStep: step,
-      onboardingData: answers,
-    },
-  });
+  const updates: Record<string, unknown> = {
+    onboardingStatus: step >= 5 ? 'complete' : 'in_progress',
+    onboardingStep: step,
+    onboardingData: answers,
+  };
+
+  if (answers.businessName?.trim()) {
+    const name = answers.businessName.trim();
+    const currentOrganization = await OrganizationModel.findById(organizationId)
+      .select('name')
+      .lean();
+    if (currentOrganization?.name !== name) {
+      updates.name = name;
+      const slugBase = name
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+      updates.slug = `${slugBase || 'business'}-${nanoid(6)}`;
+    }
+  }
+  if (answers.businessType) updates.businessType = answers.businessType;
+  if (answers.country) updates.country = answers.country;
+  if (answers.currency) updates.currency = answers.currency;
+  if (answers.phone) updates.contactPhone = answers.phone;
+  if (answers.businessEmail) updates.contactEmail = answers.businessEmail;
+  if (answers.county) updates['address.county'] = answers.county;
+  if (answers.address) updates['address.street'] = answers.address;
+
+  await OrganizationModel.findByIdAndUpdate(organizationId, { $set: updates });
 
   // Cancel pending onboarding reminders when complete
   if (step >= 5) {

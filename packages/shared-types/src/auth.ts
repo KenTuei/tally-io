@@ -55,6 +55,7 @@ export interface LoginResponse {
     businessType: string;
     currency: string;
     country: string;
+    onboardingStatus?: 'pending' | 'in_progress' | 'complete';
   };
   tokens: AuthTokens;
 }

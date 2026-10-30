@@ -257,6 +257,7 @@ export async function saleRoutes(app: FastifyInstance): Promise<void> {
     const orgId = new mongoose.Types.ObjectId(request.tenantId);
 
     const filter: Record<string, unknown> = { organizationId: orgId };
+    if (query.q) filter['receiptNumber'] = { $regex: query.q, $options: 'i' };
     if (query.branchId) filter['branchId'] = new mongoose.Types.ObjectId(query.branchId);
     if (query.status) filter['status'] = query.status;
     if (query.from || query.to) {

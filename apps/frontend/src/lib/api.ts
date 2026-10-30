@@ -56,12 +56,14 @@ async function request<T>(
   const body = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    const err = body.error ?? {};
+    // Our application errors use { error: { code, message } }, while Fastify's
+    // built-in errors use { statusCode, code, error, message }.
+    const err = body.error && typeof body.error === 'object' ? body.error : body;
     throw new ApiError(
-      err.code ?? 'API_ERROR',
-      err.message ?? 'An unexpected error occurred',
+      err.code ?? body.code ?? 'API_ERROR',
+      err.message ?? body.message ?? 'An unexpected error occurred',
       response.status,
-      err.details,
+      err.details ?? body.details,
     );
   }
 

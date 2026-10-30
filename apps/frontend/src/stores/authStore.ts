@@ -11,7 +11,7 @@ interface AuthState {
     businessType: string;
     currency: string;
     country: string;
-    onboardingStatus?: string;
+    onboardingStatus?: 'pending' | 'in_progress' | 'complete';
   } | null;
   accessToken: string | null;
   refreshToken: string | null;
@@ -24,6 +24,7 @@ interface AuthState {
   }) => void;
   clearAuth: () => void;
   setAccessToken: (token: string) => void;
+  updateOrganization: (organization: Partial<NonNullable<AuthState['organization']>>) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -57,6 +58,12 @@ export const useAuthStore = create<AuthState>()(
 
       setAccessToken: (token) => {
         set({ accessToken: token });
+      },
+
+      updateOrganization: (organization) => {
+        set((state) => ({
+          organization: state.organization ? { ...state.organization, ...organization } : null,
+        }));
       },
     }),
     {

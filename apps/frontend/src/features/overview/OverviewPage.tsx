@@ -25,6 +25,7 @@ import { StatCard } from '../../components/StatCard';
 import { useAuthStore } from '../../stores/authStore';
 import { api } from '../../lib/api';
 import { formatMoney, formatDate } from '../../lib/utils';
+import { AssistantWidget } from '../ai/AssistantWidget';
 
 // Types for dashboard data
 interface DashboardSummary {
@@ -303,6 +304,7 @@ export function OverviewPage() {
           </div>
         )}
       </div>
+      <AssistantWidget />
     </div>
   );
 }

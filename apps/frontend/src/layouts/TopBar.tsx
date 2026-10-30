@@ -1,9 +1,11 @@
-import { Menu, Bell, ChevronDown, Search, Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { Menu, Bell, ChevronDown, Search, Wifi, WifiOff, RefreshCw, Package, Users, ArrowRight, Receipt } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useSyncStore } from '../stores/syncStore';
 import { cn } from '../lib/utils';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../lib/api';
 
 interface TopBarProps {
   onMenuClick: () => void;
@@ -62,6 +64,23 @@ export function TopBar({ onMenuClick }: TopBarProps) {
   const clearAuth = useAuthStore((s) => s.clearAuth);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchText, setSearchText] = useState('');
+  const searchTerm = searchText.trim();
+  const { data: searchResults, isFetching: searching } = useQuery({
+    queryKey: ['global-search', searchTerm],
+    queryFn: async () => {
+      const params = new URLSearchParams({ q: searchTerm, limit: '5' });
+      const [products, customers, sales] = await Promise.all([
+        api.get<{ data: Array<{ id: string; name: string; sku: string }> }>(`/products?${params}`),
+        api.get<{ data: Array<{ id: string; name: string; phone?: string }> }>(`/customers?${params}`),
+        api.get<{ data: Array<{ id: string; receiptNumber: string; total: number }> }>(`/sales?${params}`),
+      ]);
+      return { products: products.data, customers: customers.data, sales: sales.data };
+    },
+    enabled: searchOpen && searchTerm.length >= 2,
+  });
+
+  const goTo = (path: string) => { setSearchOpen(false); setSearchText(''); navigate(`${path}?q=${encodeURIComponent(searchTerm)}`); };
 
   const handleLogout = () => {
     clearAuth();
@@ -109,12 +128,19 @@ export function TopBar({ onMenuClick }: TopBarProps) {
               <input
                 autoFocus
                 className="w-full bg-transparent outline-none text-foreground placeholder:text-muted-foreground"
-                placeholder="Search..."
+                placeholder="Search products or customers..."
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
                 onKeyDown={(e) => e.key === 'Escape' && setSearchOpen(false)}
               />
-              <p className="text-xs text-muted-foreground mt-3 text-center">
-                Full search coming in Phase 2
-              </p>
+              {searchTerm.length < 2 ? <p className="text-xs text-muted-foreground mt-3">Type at least 2 characters to search.</p> : searching ? <p className="text-sm text-muted-foreground py-4">Searching…</p> : (
+                <div className="mt-3 max-h-80 overflow-y-auto divide-y divide-border">
+                  {searchResults?.products.map((item) => <button key={`p-${item.id}`} onClick={() => goTo('/products')} className="w-full flex items-center gap-3 py-2 text-left hover:bg-muted px-2 rounded"><Package className="w-4 h-4 text-primary"/><span className="flex-1 text-sm">{item.name}<span className="block text-xs text-muted-foreground">SKU {item.sku}</span></span><ArrowRight className="w-4 h-4"/></button>)}
+                  {searchResults?.customers.map((item) => <button key={`c-${item.id}`} onClick={() => goTo('/customers')} className="w-full flex items-center gap-3 py-2 text-left hover:bg-muted px-2 rounded"><Users className="w-4 h-4 text-primary"/><span className="flex-1 text-sm">{item.name}<span className="block text-xs text-muted-foreground">{item.phone ?? 'Customer'}</span></span><ArrowRight className="w-4 h-4"/></button>)}
+                  {searchResults?.sales.map((item) => <button key={`s-${item.id}`} onClick={() => goTo('/sales')} className="w-full flex items-center gap-3 py-2 text-left hover:bg-muted px-2 rounded"><Receipt className="w-4 h-4 text-primary"/><span className="flex-1 text-sm">Sale {item.receiptNumber}<span className="block text-xs text-muted-foreground">Open sales to view receipt details</span></span><ArrowRight className="w-4 h-4"/></button>)}
+                  {!searchResults?.products.length && !searchResults?.customers.length && !searchResults?.sales.length && <p className="text-sm text-muted-foreground py-4 text-center">No matching products, customers or receipts.</p>}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -127,6 +153,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
 
         {/* Notifications */}
         <button
+          onClick={() => navigate('/notifications')}
           className="relative p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           aria-label="Notifications"
         >

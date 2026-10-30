@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Search, Users, Phone, Mail, Edit } from 'lucide-react';
 import { PageHeader } from '../../components/PageHeader';
@@ -18,10 +19,13 @@ interface Customer {
 }
 
 export function CustomersPage() {
+  const [searchParams] = useSearchParams();
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [showNew, setShowNew] = useState(false);
   const queryClient = useQueryClient();
+
+  useEffect(() => { setSearch(searchParams.get('q') ?? ''); setPage(1); }, [searchParams]);
 
   const { data, isLoading, error } = useQuery<{ data: Customer[]; pagination: { total: number; totalPages: number } }>({
     queryKey: ['customers', search, page],

@@ -20,6 +20,7 @@ import { aiRoutes } from '../modules/ai/ai.routes.js';
 import { branchRoutes } from '../modules/branches/branches.routes.js';
 import { customerRoutes } from '../modules/customers/customers.routes.js';
 import { expenseRoutes } from '../modules/expenses/expenses.routes.js';
+import { supplierRoutes } from '../modules/suppliers/suppliers.routes.js';
 import { onboardingRoutes } from '../modules/onboarding/onboarding.routes.js';
 import { googleAuthRoutes } from '../modules/auth/google.routes.js';
 import { tenantMiddleware } from '../middleware/tenant.middleware.js';
@@ -107,6 +108,7 @@ export async function buildApp(): Promise<FastifyInstance> {
       await protected_.register(branchRoutes, { prefix: '/branches' });
       await protected_.register(customerRoutes, { prefix: '/customers' });
       await protected_.register(expenseRoutes, { prefix: '/expenses' });
+      await protected_.register(supplierRoutes, { prefix: '/suppliers' });
       await protected_.register(onboardingRoutes, { prefix: '/onboarding' });
       await protected_.register(aiRoutes, { prefix: '/ai' });
 

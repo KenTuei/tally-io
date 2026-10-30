@@ -40,7 +40,9 @@ export async function register(input: RegisterInput) {
   // Check for existing user
   const existingUser = await UserModel.findOne({ email: input.email });
   if (existingUser) {
-    throw new ConflictError('An account with this email already exists');
+    throw new ConflictError(
+      'An account with this email already exists. Sign in, or use a different email to create a new account.',
+    );
   }
 
   const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS);
@@ -159,6 +161,8 @@ export async function register(input: RegisterInput) {
       businessType: organization.businessType,
       currency: organization.currency,
       country: organization.country,
+      // Keep legacy organizations on the guided setup path.
+      onboardingStatus: organization.onboardingStatus ?? 'pending',
     },
     tokens: {
       accessToken,
@@ -214,6 +218,10 @@ export async function login(input: LoginInput) {
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   const now = new Date();
 
+  // MongoDB cannot apply $pull and $push to the same array path in one update.
+  await UserModel.findByIdAndUpdate(user._id, {
+    $pull: { refreshTokens: { expiresAt: { $lt: now } } },
+  });
   await UserModel.findByIdAndUpdate(user._id, {
     $push: {
       refreshTokens: {
@@ -224,10 +232,7 @@ export async function login(input: LoginInput) {
         expiresAt,
       },
     },
-    $pull: {
-      refreshTokens: { expiresAt: { $lt: now } }, // Remove expired tokens
-    },
-    lastLoginAt: now,
+    $set: { lastLoginAt: now },
   });
 
   return {
@@ -247,6 +252,8 @@ export async function login(input: LoginInput) {
       businessType: organization.businessType,
       currency: organization.currency,
       country: organization.country,
+      // Treat legacy organizations without a status as unfinished.
+      onboardingStatus: organization.onboardingStatus ?? 'pending',
     },
     tokens: {
       accessToken,

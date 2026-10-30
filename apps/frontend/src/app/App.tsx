@@ -15,6 +15,11 @@ import { AIAssistantPage } from '../features/ai/AIAssistantPage';
 import { BranchesPage } from '../features/branches/BranchesPage';
 import { CustomersPage } from '../features/customers/CustomersPage';
 import { ExpensesPage } from '../features/expenses/ExpensesPage';
+import { RegistersPage } from '../features/registers/RegistersPage';
+import { StaffPage } from '../features/staff/StaffPage';
+import { NotificationsPage } from '../features/notifications/NotificationsPage';
+import { SuppliersPage } from '../features/suppliers/SuppliersPage';
+import { PurchasingPage } from '../features/purchasing/PurchasingPage';
 import { NotFoundPage } from '../components/NotFoundPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -25,11 +30,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   // Redirect to onboarding if not complete (but not if already on onboarding page)
-  if (
-    organization &&
-    (organization as { onboardingStatus?: string }).onboardingStatus !== 'complete' &&
-    (organization as { onboardingStatus?: string }).onboardingStatus !== undefined
-  ) {
+  if (organization?.onboardingStatus && organization.onboardingStatus !== 'complete') {
     return <Navigate to="/onboarding" replace />;
   }
 
@@ -67,6 +68,11 @@ export default function App() {
         <Route path="inventory" element={<InventoryPage />} />
         <Route path="customers" element={<CustomersPage />} />
         <Route path="expenses" element={<ExpensesPage />} />
+        <Route path="registers" element={<RegistersPage />} />
+        <Route path="staff" element={<StaffPage />} />
+        <Route path="notifications" element={<NotificationsPage />} />
+        <Route path="suppliers" element={<SuppliersPage />} />
+        <Route path="purchasing" element={<PurchasingPage />} />
         <Route path="branches" element={<BranchesPage />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="ai" element={<AIAssistantPage />} />

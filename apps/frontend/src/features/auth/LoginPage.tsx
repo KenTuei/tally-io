@@ -2,11 +2,12 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate, Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useAuthStore } from '../../stores/authStore';
 import { api, ApiError } from '../../lib/api';
 import { getOrCreateDeviceId } from '../../lib/utils';
 import type { LoginResponse } from '@tally/shared-types';
+import { GoogleSignInButton, type GoogleSignInResult } from './GoogleSignInButton';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -19,6 +20,15 @@ export function LoginPage() {
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
   const [error, setError] = useState<string | null>(null);
+  const onGoogleSuccess = useCallback((response: GoogleSignInResult) => {
+    setAuth({
+      user: response.user,
+      organization: response.organization,
+      accessToken: response.tokens.accessToken,
+      refreshToken: response.tokens.refreshToken,
+    });
+    navigate(response.needsOnboarding ? '/onboarding' : '/');
+  }, [navigate, setAuth]);
 
   const {
     register,
@@ -134,6 +144,8 @@ export function LoginPage() {
             {isSubmitting ? 'Signing in...' : 'Sign in'}
           </button>
         </form>
+
+        <GoogleSignInButton onSuccess={onGoogleSuccess} />
 
         {/* Register link */}
         <p className="mt-6 text-center text-sm text-muted-foreground">

@@ -69,6 +69,7 @@ interface Answers {
 export function OnboardingWizard() {
   const navigate = useNavigate();
   const organization = useAuthStore((s) => s.organization);
+  const updateOrganization = useAuthStore((s) => s.updateOrganization);
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Answers>({});
   const [planRec, setPlanRec] = useState<{
@@ -87,10 +88,17 @@ export function OnboardingWizard() {
   useEffect(() => {
     if (status) {
       setStep(status.step ?? 0);
-      setAnswers(status.answers ?? {});
+      const savedAnswers = status.answers ?? {};
+      setAnswers({
+        ...savedAnswers,
+        businessName: savedAnswers.businessName ?? organization?.name,
+        businessType: savedAnswers.businessType ?? organization?.businessType,
+        country: savedAnswers.country ?? organization?.country,
+        currency: savedAnswers.currency ?? organization?.currency,
+      });
       if (status.status === 'complete') navigate('/');
     }
-  }, [status, navigate]);
+  }, [status, navigate, organization]);
 
   const saveMutation = useMutation({
     mutationFn: (data: { step: number; answers: Answers }) =>
@@ -100,7 +108,16 @@ export function OnboardingWizard() {
   const completeMutation = useMutation({
     mutationFn: (data: { step: number; answers: Answers }) =>
       api.post('/onboarding/complete', data),
-    onSuccess: () => navigate('/'),
+    onSuccess: () => {
+      updateOrganization({
+        name: answers.businessName?.trim() || organization?.name || 'My Business',
+        businessType: answers.businessType || organization?.businessType || 'other',
+        currency: answers.currency || organization?.currency || 'KES',
+        country: answers.country || organization?.country || 'KE',
+        onboardingStatus: 'complete',
+      });
+      navigate('/');
+    },
   });
 
   const recommendMutation = useMutation({

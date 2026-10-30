@@ -21,6 +21,7 @@ const adjustStockSchema = z.object({
   variantId: z.string().optional(),
   branchId: z.string().min(1),
   quantity: z.number().int(),
+  unitCost: z.number().int().nonnegative().optional(),
   reason: z.string().min(1).max(500),
   idempotencyKey: z.string().uuid().optional(),
 });
@@ -119,6 +120,7 @@ export async function inventoryRoutes(app: FastifyInstance): Promise<void> {
       ...(body.variantId && { variantId: new mongoose.Types.ObjectId(body.variantId) }),
       type: 'adjusted',
       quantity: body.quantity,
+      unitCost: body.unitCost,
       referenceType: 'adjustment',
       referenceId: new mongoose.Types.ObjectId(),
       reason: body.reason,

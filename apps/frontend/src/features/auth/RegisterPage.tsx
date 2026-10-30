@@ -2,11 +2,13 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate, Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
+import { CheckCircle2 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { api, ApiError } from '../../lib/api';
 import { getOrCreateDeviceId } from '../../lib/utils';
 import type { LoginResponse } from '@tally/shared-types';
+import { GoogleSignInButton, type GoogleSignInResult } from './GoogleSignInButton';
 
 const registerSchema = z.object({
   firstName: z.string().min(1, 'First name is required').max(50),
@@ -41,6 +43,16 @@ export function RegisterPage() {
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
   const [error, setError] = useState<string | null>(null);
+  const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);
+  const onGoogleSuccess = useCallback((response: GoogleSignInResult) => {
+    setAuth({
+      user: response.user,
+      organization: response.organization,
+      accessToken: response.tokens.accessToken,
+      refreshToken: response.tokens.refreshToken,
+    });
+    navigate(response.needsOnboarding ? '/onboarding' : '/');
+  }, [navigate, setAuth]);
 
   const {
     register,
@@ -61,15 +73,7 @@ export function RegisterPage() {
         deviceId: getOrCreateDeviceId(),
         deviceType: 'web',
       });
-
-      setAuth({
-        user: response.user,
-        organization: response.organization,
-        accessToken: response.tokens.accessToken,
-        refreshToken: response.tokens.refreshToken,
-      });
-
-      navigate('/');
+      setRegisteredEmail(response.user.email);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -82,6 +86,32 @@ export function RegisterPage() {
   const fieldClass =
     'w-full px-3 py-2.5 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-colors';
   const errorClass = 'mt-1 text-xs text-destructive';
+
+  if (registeredEmail) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-4">
+        <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
+          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10">
+            <CheckCircle2 className="h-8 w-8 text-emerald-600" />
+          </div>
+          <h1 className="text-2xl font-bold">Your account is set up</h1>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            We created your Tally.io account for <span className="font-medium text-foreground">{registeredEmail}</span>.
+            Sign in next and we’ll guide you through setting up your business.
+          </p>
+          <Link
+            to="/login"
+            className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+          >
+            Sign in to continue
+          </Link>
+          <p className="mt-4 text-xs text-muted-foreground">
+            Already have an account? Use the same sign-in page.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4 py-8">
@@ -216,6 +246,8 @@ export function RegisterPage() {
             By creating an account, you agree to our terms of service and privacy policy.
           </p>
         </form>
+
+        <GoogleSignInButton onSuccess={onGoogleSuccess} />
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
           Already have an account?{' '}
